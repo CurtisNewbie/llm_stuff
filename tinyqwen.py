@@ -5,37 +5,39 @@ import sys
 import readline
 from langchain_huggingface import HuggingFacePipeline
 
+# this model needs GPU and CUDA.
+#
+# pip install transformers==4.32.0 accelerate tiktoken einops scipy transformers_stream_generator==0.0.4 peft deepspeed
+# pip install auto-gptq optimum
+
 max_new_tokens=300
 task="text-generation"
-model="TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-files = ["about.txt"]
+model="Qwen/Qwen-1_8B-Chat-Int4"
+files = []
 
 hf = HuggingFacePipeline.from_model_id(
     model_id=model,
     task=task,
+    trust_remote_code=True,
     pipeline_kwargs={
         "max_new_tokens": max_new_tokens,
     },
     model_kwargs={
+        "trust_remote_code":True,
         "temperature": 0.7,
         "top_k": 50,
         "top_p": 0.95,
-        "do_sample": True,
-    },
+        "do_sample": True
+    }
 )
 
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 from langchain_core.runnables import RunnablePassthrough
 
 # load the document and split it into chunks
-# e.g.,
-#
-# onecafe is a company found by yongjie.zhuang.
-#
-# onecafe sells coffee.
 documents = []
 for f in files:
     documents.extend(TextLoader(f).load())
@@ -43,49 +45,49 @@ for f in files:
 # split it into chunks
 text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
 docs = text_splitter.split_documents(documents)
-print(">> docs", docs)
 
 # create the open-source embedding function
-embed = HuggingFaceEmbeddings()
+embed = SentenceTransformerEmbeddings(model_name=model)
 
 # load it into Chroma
 vec = Chroma.from_documents(docs, embed)
-# reti = vec.as_retriever(search_kwargs={"k": 10}) # default: k is 4
-reti = vec.as_retriever(search_type="similarity_score_threshold", search_kwargs={"score_threshold": 0.2})
+retri = vec.as_retriever() # default: k is 4, num of doc
 
-def format_docs(docs):
-    return "\n\n".join(doc.page_content for doc in docs)
+def format_docs(docs): return "\n\n".join(doc.page_content for doc in docs)
 
-template = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+template = """你是一个负责解答疑问的助手，请根据以下上下文信息来回答问题。如果你不知道问题的答案，请你回答不知道。你的回答要尽可能严谨简洁。
 
-Question: {question}
+问题: {question}
 
-Context: {context}
+上下文: {context}
 
-Answer:"""
-ans_pat = "^.*Answer: *(.*)$"
+答案:"""
+
 prompt = PromptTemplate.from_template(template)
 
 chain = (
-    {"context": reti | format_docs, "question": RunnablePassthrough()}
+    {"context": retri | format_docs, "question": RunnablePassthrough()}
     | prompt
     | hf.bind()
 )
 
 print("\n\n")
-
+ans_pat = "^.*答案: *(.*)$"
 while True:
     try:
         print("Enter your question:")
         q = None
         while not q: q = sys.stdin.readline().strip()
+        print()
 
         resp = chain.invoke(q)
         m = re.search(ans_pat, resp, re.DOTALL)
         ans = resp
         if m: ans = m[1]
 
-        print(f"\n\n> AI: '{ans}'\n")
+        # print(resp)
+        # print(f"\n\n>>>> resp: '{resp}'")
+        print(f"\n> {ans}\n")
 
     except InterruptedError:
         sys.exit()

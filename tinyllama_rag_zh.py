@@ -8,7 +8,7 @@ from langchain_huggingface import HuggingFacePipeline
 max_new_tokens=300
 task="text-generation"
 model="TinyLlama/TinyLlama_v1.1_chinese"
-files = ["about_zh.txt"]
+files = []
 
 hf = HuggingFacePipeline.from_model_id(
     model_id=model,
