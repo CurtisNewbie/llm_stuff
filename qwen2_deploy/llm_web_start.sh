@@ -1,0 +1,1 @@
+nohup bash -c "python3.11 llm_web.py" 2&> llm_web.log &

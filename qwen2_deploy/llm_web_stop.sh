@@ -1,0 +1,1 @@
+kill -15 $(ps -ef | grep llm_web.py | grep -v grep | awk {' print $2 '})
