@@ -107,3 +107,4 @@ https://www.datacamp.com/tutorial/fine-tuning-large-language-models, HTTP Error 
 - [FindPython — CMake 4.0.0-rc4 Documentation](https://cmake.org/cmake/help/latest/module/FindPython.html)
 - [faiss/INSTALL.md at main · facebookresearch/faiss · GitHub](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md)
 - [CUDA GPUs - Compute Capability | NVIDIA Developer](https://developer.nvidia.com/cuda-gpus)
+- [介绍 - OpenAI（ChatGPT）](https://openai.apifox.cn/)
